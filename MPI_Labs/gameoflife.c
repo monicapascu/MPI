@@ -1,0 +1,7 @@
+//MPI_Dims_create()
+//MPI_Cart_create()
+//MPI_Cart_coords()
+//MPI_Type_vector()
+//MPI_Type_commit()
+//MPI_Cart_shift()
+//MPI_Sendrecv()

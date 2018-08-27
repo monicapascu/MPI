@@ -1,0 +1,44 @@
+- Fiecare proces mentine doua blocuri: blocul local curent (GBlock) si blocul "evoluat" (GBlockNext) la fiecare iteratie
+- Blocurile locale au (deltaX + 2)*(deltaY+2) pixeli - doua extra-linii si doua extra-coloane pentru "halo" 
+- Tipuri de date derivate:
+	- pentru receptie la procesul 0:
+	  MPI_Type_vector( deltaY, deltaX, XSIZE, MPI_INT, &block_t );
+  	  MPI_Type_commit( &block_t );
+	
+	- pentru transmitere, procesele != 0  
+  	  MPI_Type_vector( deltaY, deltaX, deltaX + 2, MPI_INT, &sendblock_t ); 
+      MPI_Type_commit( &sendblock_t );
+  	
+	- coloane si linii, pentru MPI_Sendrecv():
+      MPI_Type_vector( deltaY + 2, 1, deltaX + 2, MPI_INT, &col_t); 	// coloana pentru swap
+  	  MPI_Type_commit( &col_t );
+  
+  	  MPI_Type_vector( deltaX, 1, 1 , MPI_INT, &line_t); 	// linia pentru swap cu cele doua extracoloane
+      MPI_Type_commit( &line_t );
+  
+    
+- Rangurile proceselor vecine in topologia carteziana definita? Pentru definitia regiunilor "halo"...
+  MPI_Cart_shift( cartComm, 0, 1, &up, &down );
+  MPI_Cart_shift( cartComm, 1, 1, &left, &right );
+
+- Reguli de evolutie (0 <= nvec <= 8 este numarul vecinilor de ordin I negri ai pixelului curent):
+
+    /* ****************************************************************************************************************
+     * Identific numarul de vecini negri ("vii") ai fiecarui pixel din miezul blocului local continand starea curenta *
+     * Regulile de evolutie (se aplica doar miezului!):                                                               *
+     * - daca nvec < 2 si pixelul este negru, devine alb ("nu se poate reproduce")				      *
+     * - daca nvec == 2 pixelul isi pastreaza culoarea                                                                *
+     * - daca nvec >= 3 si nvec <= 7 si pixelul este alb, devine negru ("celula se naste") 			      *
+     * - daca nvec > 7 si pixelul este negru, devine alb ("suprapopulare")					      *
+     * ****************************************************************************************************************/
+
+- Itereaza regulile de evolutie de ITER ori; starea initiala a miezului la iteratia urmatoare este starea curenta a miezului acestei iteratii:
+/* ********************** PAS 4 ***************************************************
+   * - daca proces cu rang != 0                                                     *
+   *     transmite date brute catre procesul 0                                      *
+   * - altfel                                                                       *
+   *     itereaza de la procesul 1 la procesul nproc-1                              *
+   *       primeste datele in regiunea corecta a buffer-ului, folosind tipul derivat*
+   * - scrie datele in fisier (la fiecare 2 iteratii)                               *
+   * - finalizeaza MPI                                                              *
+   * ********************************************************************************/
